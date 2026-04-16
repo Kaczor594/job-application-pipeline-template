@@ -1,0 +1,159 @@
+{
+  "personal": {
+    "name": "Jane Doe",
+    "email": "jane.doe@example.com",
+    "phone": "+1 555 123 4567",
+    "address": "123 Main Street",
+    "city": {
+        "en": "12345 Berlin, Germany",
+        "de": "12345 Berlin, Deutschland"
+      },
+    "languages": [
+      {"language": "English", "level": "Native"},
+      {"language": "German", "level": "Fluent (C1)"}
+    ],
+    "career_goals": {
+      "short_term": "Data analyst or data science role in tech",
+      "long_term": "Lead data scientist at a product company",
+      "currently_studying": "Machine learning, cloud certifications"
+    }
+  },
+
+  "skills": {
+    "programming": [
+      {
+        "name": "Python",
+        "level": "Expert",
+        "evidence": "5 years daily use; built data pipelines, ML models, and internal tools"
+      },
+      {
+        "name": "SQL",
+        "level": "Expert",
+        "evidence": "Complex analytical queries across data warehouses; ETL pipeline development"
+      },
+      {
+        "name": "R",
+        "level": "Proficient",
+        "evidence": "Statistical analysis and visualization; academic research projects"
+      }
+    ],
+    "statistics_and_ml": [
+      {
+        "name": "Machine Learning",
+        "level": "Proficient",
+        "evidence": "Built classification and regression models (XGBoost, Random Forest) for customer churn prediction"
+      },
+      {
+        "name": "Statistical Modeling",
+        "level": "Expert",
+        "evidence": "A/B testing frameworks, regression analysis, time-series forecasting"
+      }
+    ],
+    "data_and_etl": [
+      {"name": "ETL Processes", "level": "Expert", "evidence": "Built and maintained Airflow DAGs processing 10M+ rows daily"},
+      {"name": "AWS (S3, Redshift)", "level": "Proficient", "evidence": "Daily use of cloud data warehouses for analytics pipelines"},
+      {"name": "dbt", "level": "Proficient", "evidence": "Data transformation layer for analytics warehouse"},
+      {"name": "Tableau", "level": "Proficient", "evidence": "Executive dashboards and self-serve analytics for stakeholders"}
+    ],
+    "domain": [
+      {"name": "Product Analytics", "level": "Expert", "evidence": "Defined and tracked KPIs for product team; built experimentation frameworks"},
+      {"name": "Financial Modeling", "level": "Proficient", "evidence": "Revenue forecasting and scenario analysis for strategic planning"}
+    ]
+  },
+
+  "experience": [
+    {
+      "company": "TechCorp Inc.",
+      "location": "Berlin, Germany",
+      "title": "Senior Data Analyst",
+      "start": "2023-03",
+      "end": "present",
+      "type": "full-time",
+      "achievements": [
+        "Built automated reporting pipeline reducing weekly reporting effort from 8 hours to 15 minutes",
+        "Designed A/B testing framework adopted by 3 product teams, improving experiment velocity by 40%",
+        "Developed customer segmentation model using clustering techniques, enabling targeted marketing campaigns",
+        "Created executive dashboard tracking 12 KPIs, becoming the primary decision-making tool for leadership"
+      ],
+      "tools": ["Python", "SQL", "dbt", "Airflow", "Tableau", "AWS Redshift"]
+    },
+    {
+      "company": "DataStart GmbH",
+      "location": "Munich, Germany",
+      "title": "Data Analyst",
+      "start": "2020-06",
+      "end": "2023-02",
+      "duration_years": 3,
+      "company_size": "200 employees",
+      "achievements": [
+        "Migrated legacy Excel-based reporting to automated SQL/Python pipeline, saving 20 hours/week",
+        "Built churn prediction model (XGBoost) achieving 85% precision, used by customer success team",
+        "Managed ETL pipelines processing data from 5 external APIs into central data warehouse",
+        "Presented quarterly business reviews to C-suite, translating complex analyses into actionable insights",
+        "Reduced data discrepancies by 90% through implementation of data quality checks across pipelines"
+      ],
+      "tools": ["Python", "R", "SQL", "AWS S3", "Airflow", "Tableau", "Git"]
+    }
+  ],
+
+  "education": [
+    {
+      "institution": "University of Example",
+      "location": "Boston, MA, USA",
+      "degree": "Bachelor of Science",
+      "major": "Statistics",
+      "graduated": "May 2020",
+      "highlights": [
+        "Senior thesis: 'Predictive Modeling of Urban Transit Delays' — built ML models in Python achieving 92% accuracy",
+        "Concentration in Applied Statistics and Computer Science",
+        "Dean's List: 6 semesters",
+        "Teaching assistant for Introduction to Data Science (2 semesters)"
+      ]
+    }
+  ],
+
+  "certifications": [
+    {
+      "name": "AWS Certified Data Analytics",
+      "status": "in_progress",
+      "expected": "2025"
+    }
+  ],
+
+  "positioning": {
+    "strongest_narrative": "Full-stack data analyst who bridges technical implementation and business strategy — builds systems that drive measurable impact",
+    "key_differentiators": [
+      "End-to-end ownership of data systems from pipeline to executive dashboard",
+      "Strong statistical foundation with practical ML experience",
+      "Bilingual (English/German) in a European tech market",
+      "Track record of automating manual processes with measurable time savings"
+    ],
+    "roles_that_fit_well": [
+      "Senior Data Analyst",
+      "Analytics Engineer",
+      "Data Scientist",
+      "Business Intelligence Engineer"
+    ]
+  },
+
+  "job_search": {
+    "salary": {
+      "minimum_eur": 55000,
+      "note": "55k minimum; flexible for exceptional opportunities"
+    },
+    "location": {
+      "preferred": "Berlin or Munich",
+      "remote_ok": true
+    },
+    "exclusions": {
+      "companies": ["CompanyX"],
+      "sectors": ["Gambling"]
+    }
+  },
+
+  "meta": {
+    "profile_version": "1.0",
+    "last_updated": "2026-01",
+    "notes": "Canonical source of truth for resume generation. Update this JSON with new achievements, skills, and preferences."
+  }
+}

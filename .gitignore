@@ -1,0 +1,48 @@
+# Application outputs — personal data, not tracked
+applications/
+!applications/.gitkeep
+
+# Personal data — users create these locally
+profile.json
+photo_cv.jpg
+
+# Compiled LaTeX artifacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.fls
+*.fdb_latexmk
+
+# Compiled PDFs
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+.env.*
+*.key
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
