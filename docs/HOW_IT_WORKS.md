@@ -30,8 +30,8 @@ or employers. If a resume says something wrong, the fix belongs in `profile.json
 dashboard running. Each night it:
 
 1. **Finds jobs.**
-   - Job boards: Arbeitnow (Germany, Austria, Switzerland, no key) and Adzuna (many
-     countries, free key).
+   - Job boards: Adzuna (many countries, free key; the main source) and Arbeitnow (no key,
+     but only its ~900 newest postings, mostly Germany, Austria and Switzerland).
    - Your employer list (`docs/EMPLOYERS.md`).
    - With the Gmail add-on, your job-alert emails too.
    - Only roles in your city, or remote in your country (per `job_search.location`), are kept.

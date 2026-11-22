@@ -75,11 +75,15 @@ Draft `profile.json` with the same shape as `profile.example.json`:
   `achievements` (concrete, with their numbers), `tools`.
 - `education[]`, `skills` (grouped; each `{name, level, evidence}`), `certifications`,
   `projects` (optional), `positioning` (strongest narrative, differentiators, roles that fit).
+- Optional, leave out unless they have the info: `career_goals`, `projects`,
+  `certifications`, `meta`, `job_search.salary_reference_bands`. `check_profile.py` says
+  what's required.
 
 Guardrails, every time:
 - Every fact must be traceable to a document or an answer. If the CV says "improved
   reporting", don't make up "by 40%" — ask: "Do you have a number for that?"
-- Missing month for a date? Ask. Skill level unclear? Ask, or leave the level out.
+- Missing month for a date (jobs *and* graduation)? Ask. Skill level unclear? Ask, or
+  leave the level out.
 - Keep a short list of open questions while drafting and ask them together (≤6 at a time).
 - Things they're learning but can't do yet go under `not_yet_implemented` in that
   experience entry, never under skills.
@@ -88,8 +92,9 @@ Guardrails, every time:
 dates, 3–5 things they did or achieved, tools) → education → skills → languages. Then draft
 the same way.
 
-Write the file, show a 5–10 line summary ("2 jobs, 14 skills, 1 degree; open points: …"),
-and run `python3 scripts/check_profile.py`. Fix every ✗ with them. Warnings (!) are fine
+Before writing, show a 5–10 line summary of the draft ("2 jobs, 14 skills, 1 degree;
+positioning: …; open points: …") and let them correct it. Then write the file and run
+`python3 scripts/check_profile.py`. Fix every ✗ with them. Warnings (!) are fine
 if they're deliberate.
 
 **Photo:** ask whether photos are normal where they apply (common in Germany, Austria and
@@ -104,7 +109,8 @@ Ask, and fill `job_search` (schema and examples: `profile.example.json`):
    (`country`), or remote from anywhere (`any`)?
 3. Which roles? → `target_roles`, plus 2–4 short `search_terms` for the job boards.
 4. Words that mark their field (`domain_words`, `domain_phrases`) and role nouns
-   (`role_words`), e.g. analyst/engineer. Suggest some from their profile, let them edit.
+   (`role_words`), e.g. analyst/engineer. Suggest some from their profile and **show them
+   the list** before saving. These words decide which jobs the agent even looks at.
 5. Seniority (`junior`/`mid`/`senior`) and what's too senior → `objective.qualification_fit`.
 6. Minimum salary + currency. If they know typical ranges for their target roles, add
    `salary_reference_bands`; otherwise skip them (the tool estimates per job).
@@ -126,8 +132,11 @@ the commands. Typical order:
    - Linux: `sudo apt install texlive-xetex texlive-fonts-extra` (or the distro's equivalent).
    - Windows: use WSL (Ubuntu) and follow the Linux steps. Not tested on Windows itself.
 3. **API key** — they create one at console.anthropic.com → API keys and add credit. Have
-   them create `.env` in the repo root themselves with the line
-   `ANTHROPIC_API_KEY=sk-ant-...`. Don't ask them to paste the key into the chat.
+   them create `.env` in the repo root themselves, e.g. in their own terminal, in the repo
+   folder: `nano .env`, type `ANTHROPIC_API_KEY=sk-ant-...`, then Ctrl+O, Enter, Ctrl+X.
+   Don't ask them to paste the key into the chat. Use `.env` even if the key is already
+   exported in their shell, because the nightly scheduler doesn't see shell variables.
+   (doctor shows where it found the key.)
 4. `python3 scripts/doctor.py --live` → one tiny test call (~$0.0001) proves the key works.
 
 Done when doctor ends with **"All required checks pass."** Optional lines (–) are fine.
@@ -143,9 +152,13 @@ Save it to `data/first-jd.txt` (`data/` is never committed), then run:
 
 Add `--lang en` or `--lang de` to force a language, `--no-photo` to skip the photo. It takes
 1–3 minutes. Then show:
-- the output folder `applications/<date>_<company>_<role>_<lang>/` and open `resume.pdf` +
+- the output folder (the newest one in `applications/`, named
+  `<date>_<company>_<role>_<lang>`) and open `resume.pdf` +
   `cover_letter.pdf` for them (`open` on macOS, `xdg-open` on Linux),
-- the fit summary and the cost from `usage.json` in that folder.
+- the fit summary and the cost from `usage.json` in that folder. If the ad is more senior
+  than their `seniority` (e.g. "Senior" or "Lead" for a mid-level profile), say so plainly.
+- Ask them to read the resume line by line: the page-fit step can rephrase bullets. Anything
+  that overstates what they did → tighten the fact in `profile.json` and rerun.
 
 Ask what they'd change. Wrong or weak facts → fix `profile.json`, not the PDF, and rerun.
 Layout-only changes → `.venv/bin/python rebuild_resume.py applications/<folder>` (no API cost).
@@ -154,17 +167,20 @@ Layout-only changes → `.venv/bin/python rebuild_resume.py applications/<folder
 
 Ask if they want job hunting on autopilot. If yes:
 
-1. **Employer list** (optional): `cp agent/employers.example.json employers.json`, then
-   help them swap in companies they care about. `docs/EMPLOYERS.md` explains how to find a
-   company's careers platform.
-2. **Job boards:** Arbeitnow works without a key for Germany, Austria and Switzerland.
-   Outside those, recommend the free Adzuna key (developer.adzuna.com →
-   `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` in `.env`); without it, discovery only checks the
-   employer list.
+1. **Employer list** (recommended): `cp agent/employers.example.json employers.json`. The
+   example is a generic starter of big German employers, not tailored to anyone, so help
+   them replace it with 10–30 companies in their city and field. `docs/EMPLOYERS.md`
+   explains how to find a company's careers platform.
+2. **Job boards:** recommend the free Adzuna key to everyone (developer.adzuna.com → put
+   `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` in `.env`). It is the main search source. Arbeitnow
+   needs no key but only covers its ~900 newest postings (mostly Germany, Austria and
+   Switzerland), so on its own it often finds nothing for a specific role and city.
 3. **Dry run first (free apart from ranking):**
-   `./scripts/manage.sh run-now --dry-run` — shows what it finds and how it ranks it, builds
-   nothing. If the matches look wrong, adjust `job_search` (search terms, domain words,
-   location) and repeat.
+   `./scripts/manage.sh run-now --dry-run` shows what it finds and how it ranks it, and
+   builds nothing. It takes about 2–5 minutes, with long quiet stretches, so tell them it
+   hasn't hung. **"0 to review" on the first run is common**, so don't let it end there: check
+   the `[discover]` lines for which sources found anything. Then add the Adzuna key, more
+   relevant employers, or broader `search_terms` / `domain_words`, and repeat.
 4. **Schedule it:** `./scripts/manage.sh start` (nightly at 05:30 by default; set
    `JOBAGENT_RUN_AT=HH:MM` in `.env` first to change it). Dashboard:
    http://127.0.0.1:8055. Linux: suggest `loginctl enable-linger $USER` so it runs while

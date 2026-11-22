@@ -80,8 +80,11 @@ def main() -> int:
              "macOS BasicTeX: sudo tlmgr install tex-gyre; Linux: sudo apt install texlive-fonts-extra")
 
     key = env.get("ANTHROPIC_API_KEY", "")
+    in_dotenv = "ANTHROPIC_API_KEY=" in ((REPO / ".env").read_text(encoding="utf-8")
+                                         if (REPO / ".env").exists() else "")
+    where = "in .env" if in_dotenv else "shell only — add it to .env so the nightly run sees it"
     line(OK if key.startswith("sk-ant-") else BAD, "Anthropic API key",
-         "set" if key else "missing",
+         f"set ({where})" if key else "missing",
          "create one at console.anthropic.com → API keys, then put ANTHROPIC_API_KEY=sk-ant-... in .env")
     if live and key and VENV_PY.exists():
         code = ("import anthropic;c=anthropic.Anthropic();"
