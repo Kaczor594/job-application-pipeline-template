@@ -1,0 +1,13 @@
+[Unit]
+Description=Job agent review dashboard (http://127.0.0.1:{{PORT}})
+
+[Service]
+WorkingDirectory={{REPO}}
+Environment=PATH={{PATH}}
+ExecStart={{REPO}}/.venv/bin/python {{REPO}}/web/app.py
+Restart=on-failure
+StandardOutput=append:{{LOG_DIR}}/web.log
+StandardError=append:{{LOG_DIR}}/web.err.log
+
+[Install]
+WantedBy=default.target

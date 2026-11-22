@@ -1,0 +1,12 @@
+[Unit]
+Description=Job agent nightly run (find, rank, prepare applications)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={{REPO}}
+Environment=PATH={{PATH}}
+ExecStart=/bin/bash {{REPO}}/scripts/run_nightly.sh
+StandardOutput=append:{{LOG_DIR}}/nightly.log
+StandardError=append:{{LOG_DIR}}/nightly.err.log
