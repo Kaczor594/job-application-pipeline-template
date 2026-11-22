@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job review — {{ today }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main>
+  <header class="topbar">
+    <div class="brand">
+      <span class="monogram" aria-hidden="true">JA</span>
+      <div>
+        <div class="eyebrow">Nightly job agent</div>
+        <h1>Review — {{ today }}</h1>
+      </div>
+    </div>
+    <nav class="counts">
+      {% for st, n in counts.items() %}<span class="chip">{{ st }} <b>{{ n }}</b></span>{% endfor %}
+      <a class="chip link" href="/jobs">Full history</a>
+      <a class="chip link" href="/digest">Latest digest</a>
+    </nav>
+  </header>
+
+  {% if proposals %}
+  <section>
+    <h2>Possible status changes <span class="muted">— your call</span></h2>
+    {% for p in proposals %}
+    <div class="card proposal" data-proposal-id="{{ p.proposal_id }}">
+      <div><b>{{ p.proposed_status|capitalize }}</b> — {{ p.role }} at {{ p.company }}</div>
+      <div class="muted small">{{ p.evidence }}</div>
+      <div class="actions">
+        <button class="btn good" data-action="accept">Accept</button>
+        <button class="btn warn" data-action="dismiss">Dismiss</button>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section>
+    <h2>Ready to review &amp; submit <span class="muted">— {{ listed|length }}</span></h2>
+    {% if not listed %}
+      <p class="muted small">Nothing awaiting review — every prepared role has been rated or applied to. New roles appear here as they are sourced.</p>
+    {% endif %}
+    {% for j in listed %}
+    <div class="card job" id="job-{{ j.job_id }}" data-job-id="{{ j.job_id }}">
+      <div class="job-head">
+        <div>
+          <div class="role">{{ j.role }}</div>
+          <div class="muted">{{ j.company }}{% if j.location %} · {{ j.location }}{% endif %}{% if j.language %} · {{ j.language }}{% endif %}</div>
+        </div>
+        <div class="badges">
+          {% if j.fit_percentage is not none %}<span class="badge accent">fit {{ j.fit_percentage }}%</span>{% endif %}
+          {% if j.relevance_score is not none %}<span class="badge">rel {{ j.relevance_score }}</span>{% endif %}
+          {% if j.salary_mid %}<span class="badge warm">~{{ cur }}{{ '{:,}'.format(j.salary_mid) }}</span>{% endif %}
+        </div>
+      </div>
+      {% if j.relevance_reason %}<div class="relevance-reason">{{ j.relevance_reason }}</div>{% endif %}
+      <div class="materials">
+        <a href="/files/{{ j.job_id }}/resume.pdf" target="_blank">Resume</a>
+        <a href="/files/{{ j.job_id }}/cover_letter.pdf" target="_blank">Cover letter</a>
+        <a href="/files/{{ j.job_id }}/fit_summary.md" target="_blank">Fit summary</a>
+        {% if j.jd_url %}<a href="{{ j.jd_url }}" target="_blank" class="muted">Original posting ↗</a>{% endif %}
+      </div>
+      <div class="actions">
+        <button class="btn rate small {{ 'on' if j.rating=='up' }}" data-rate="up">Relevant</button>
+        <button class="btn rate small {{ 'on' if j.rating=='down' and j.down_reason != 'qualification' }}" data-rate="down" data-reason="interest">Pass</button>
+        <button class="btn rate small {{ 'on' if j.rating=='down' and j.down_reason == 'qualification' }}" data-rate="down" data-reason="qualification" title="Interested but under-qualified (e.g. too senior) — won't penalize similar junior roles">Too senior</button>
+        <button class="btn apply {{ 'on' if j.applied }}" data-apply>{{ 'Applied' if j.applied else 'Mark applied' }}</button>
+        <select class="status" aria-label="status">
+          {% for s in ['listed','applied','confirmed','interview','rejected','excluded'] %}
+          <option value="{{ s }}" {{ 'selected' if j.status==s }}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section>
+    <h2>Everything seen tonight <span class="muted">— {{ tonight|length }}, rate to teach the ranker</span></h2>
+    <div class="card" style="padding:var(--space-1) var(--space-4)">
+    <table class="seen">
+      <tbody>
+      {% for j in tonight %}
+      <tr data-job-id="{{ j.job_id }}" class="{{ 'incomplete' if (j.jd_confidence or 0) < 0.5 }}">
+        <td>
+          {% if j.jd_url %}<a class="seen-title" href="{{ j.jd_url }}" target="_blank">{{ j.role }}</a>{% else %}<span class="seen-title">{{ j.role }}</span>{% endif %}
+          <div class="muted small">{{ j.company }} · {{ j.source }}{% if (j.jd_confidence or 0) < 0.5 %} · <span class="warn">JD incomplete</span>{% endif %}</div>
+        </td>
+        <td class="num">{% if j.relevance_score is not none %}<span class="badge">{{ j.relevance_score }}</span>{% endif %}</td>
+        <td class="rate-cell">
+          <button class="btn rate small {{ 'on' if j.rating=='up' }}" data-rate="up">Relevant</button>
+          <button class="btn rate small {{ 'on' if j.rating=='down' and j.down_reason != 'qualification' }}" data-rate="down" data-reason="interest">Pass</button>
+          <button class="btn rate small {{ 'on' if j.rating=='down' and j.down_reason == 'qualification' }}" data-rate="down" data-reason="qualification" title="Interested but under-qualified (e.g. too senior) — won't penalize similar junior roles">Too senior</button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+</main>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

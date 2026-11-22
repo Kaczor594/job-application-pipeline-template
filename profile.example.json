@@ -190,12 +190,17 @@
     ],
     "domain_words": [
       "data",
+      "daten",
       "analytics",
       "bi",
       "insights",
       "reporting",
       "statistics",
       "ml"
+    ],
+    "domain_phrases": [
+      "business intelligence",
+      "machine learning"
     ],
     "role_words": [
       "analyst",

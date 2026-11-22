@@ -1,0 +1,18 @@
+# Nightly job-application agent dependencies (separate from the core pipeline's
+# requirements.txt so apply.py stays minimal: anthropic, pdfplumber, pillow).
+#
+# Install into the existing venv:  .venv/bin/pip install -r requirements-agent.txt
+
+# Gmail API (OAuth read + send + label)
+google-api-python-client>=2.130.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# Web scraping for JD extraction
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+soupsieve>=4.0  # CVE-2026-126190
+lxml>=5.0.0
+
+# Companion review dashboard
+flask>=3.0.0

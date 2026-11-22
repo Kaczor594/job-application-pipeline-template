@@ -51,3 +51,6 @@ env/
 data/
 logs/
 deploy/rendered/
+
+# Your employer watch-list (starts from agent/employers.example.json)
+employers.json

@@ -1,0 +1,59 @@
+/* Job agent dashboard — design tokens (neutral theme).
+   System fonts only (no external requests). Edit freely to restyle the dashboard. */
+
+:root {
+  /* Neutral paper + slate greys */
+  --paper-00: #FFFFFF;
+  --bg:        #F6F7F8;
+  --bg-raised: #FFFFFF;
+  --bg-sunken: #EEF0F2;
+  --bg-inverse:#1F2933;
+
+  --fg-1: #1F2933;          /* primary text */
+  --fg-2: #3E4C59;          /* secondary text */
+  --fg-3: #6B7785;          /* muted text */
+  --fg-on-inverse: #F5F7FA;
+
+  --line-1: #E4E7EB;
+  --line-2: #D3D8DE;
+  --line-strong: #9AA5B1;
+
+  /* Primary (teal) scale — kept under the historical "moss" names */
+  --moss-20: #E3F4F1;
+  --moss-30: #B8E2DA;
+  --moss-40: #6CC0B1;
+  --moss-50: #2F9C8A;
+  --moss-60: #1F7A6B;
+
+  /* Warm accent (amber) scale — historical "terra" names */
+  --terra-20: #FDF0E1;
+  --terra-30: #F8D7AE;
+  --terra-40: #EFB06A;
+  --terra-60: #B8661A;
+
+  --brand: var(--moss-60);
+  --brand-soft: var(--moss-20);
+  --accent-warm-soft: var(--terra-20);
+  --negative: #B42318;
+  --warning:  #B54708;
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-prose: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-xl: 22px;
+  --tracking-tight: -0.01em;
+
+  /* Space, radius, shadow, motion */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-20: 80px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px;
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, .06);
+  --shadow-2: 0 4px 12px rgba(16, 24, 40, .08);
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: 120ms; --dur-med: 200ms;
+}

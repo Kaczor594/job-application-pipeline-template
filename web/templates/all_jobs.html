@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All jobs</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<main>
+  <header class="topbar">
+    <div class="brand">
+      <span class="monogram" aria-hidden="true">JA</span>
+      <div>
+        <div class="eyebrow">Nightly job agent</div>
+        <h1>Full history</h1>
+      </div>
+    </div>
+    <nav class="counts">
+      <a class="chip link" href="/jobs">All</a>
+      {% for st, n in counts.items() %}<a class="chip" href="/jobs?status={{ st }}" style="text-decoration:none">{{ st }} <b>{{ n }}</b></a>{% endfor %}
+      <a class="chip link" href="/">Dashboard</a>
+    </nav>
+  </header>
+
+  <p class="muted small">{{ jobs|length }} role{{ 's' if jobs|length != 1 }}{% if status %} · filtered to {{ status }}{% endif %}</p>
+  <div class="card" style="padding:var(--space-1) var(--space-4)">
+  <table class="seen">
+    <tbody>
+    {% for j in jobs %}
+    <tr data-job-id="{{ j.job_id }}">
+      <td>
+        {% if j.app_dir %}<a class="seen-title" href="/files/{{ j.job_id }}/resume.pdf" target="_blank">{{ j.role }}</a>
+        {% elif j.jd_url %}<a class="seen-title" href="{{ j.jd_url }}" target="_blank">{{ j.role }}</a>
+        {% else %}<span class="seen-title">{{ j.role }}</span>{% endif %}
+        <div class="muted small">{{ j.company }}</div>
+      </td>
+      <td class="num">{% if j.fit_percentage is not none %}<span class="badge accent">{{ j.fit_percentage }}%</span>{% endif %}</td>
+      <td style="width:110px"><span class="tag {{ j.status }}">{{ j.status }}</span></td>
+      <td class="muted small num" style="text-align:right;width:96px">{{ j.applied_date or (j.first_seen[:10] if j.first_seen else '') }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</main>
+</body>
+</html>

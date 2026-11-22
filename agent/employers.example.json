@@ -1,0 +1,15 @@
+[
+  {"company": "Celonis", "platform": "greenhouse", "slug": "celonis"},
+  {"company": "Flix (FlixBus / FlixTrain)", "platform": "greenhouse", "slug": "flix"},
+  {"company": "Scout24", "platform": "greenhouse", "slug": "scout24"},
+  {"company": "N26", "platform": "greenhouse", "slug": "n26"},
+  {"company": "commercetools", "platform": "greenhouse", "slug": "commercetools"},
+  {"company": "Personio", "platform": "personio", "slug": "personio"},
+  {"company": "Roland Berger", "platform": "smartrecruiters", "slug": "RolandBerger"},
+  {"company": "Salesforce", "platform": "workday", "host": "salesforce.wd12.myworkdayjobs.com", "tenant": "salesforce", "site": "External_Career_Site"},
+  {"company": "Accenture", "platform": "workday", "host": "accenture.wd103.myworkdayjobs.com", "tenant": "accenture", "site": "AccentureCareers"},
+  {"company": "Allianz", "platform": "phenom", "base_url": "https://careers.allianz.com/global/en"},
+  {"company": "Boston Consulting Group", "platform": "phenom", "base_url": "https://careers.bcg.com/global/en", "max_fetch": 160},
+  {"company": "Swiss Re", "platform": "successfactors", "base_url": "https://careers.swissre.com"},
+  {"company": "Deloitte (Germany)", "platform": "jsonld", "base_url": "https://job.deloitte.com", "job_url_re": "/job-.*-_\\d+$", "id_re": "-_(\\d+)$", "max_fetch": 120}
+]
