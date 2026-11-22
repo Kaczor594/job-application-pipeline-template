@@ -5,12 +5,18 @@
     "phone": "+1 555 123 4567",
     "address": "123 Main Street",
     "city": {
-        "en": "12345 Berlin, Germany",
-        "de": "12345 Berlin, Deutschland"
-      },
+      "en": "12345 Berlin, Germany",
+      "de": "12345 Berlin, Deutschland"
+    },
     "languages": [
-      {"language": "English", "level": "Native"},
-      {"language": "German", "level": "Fluent (C1)"}
+      {
+        "language": "English",
+        "level": "Native"
+      },
+      {
+        "language": "German",
+        "level": "Fluent (C1)"
+      }
     ],
     "career_goals": {
       "short_term": "Data analyst or data science role in tech",
@@ -18,7 +24,6 @@
       "currently_studying": "Machine learning, cloud certifications"
     }
   },
-
   "skills": {
     "programming": [
       {
@@ -50,17 +55,40 @@
       }
     ],
     "data_and_etl": [
-      {"name": "ETL Processes", "level": "Expert", "evidence": "Built and maintained Airflow DAGs processing 10M+ rows daily"},
-      {"name": "AWS (S3, Redshift)", "level": "Proficient", "evidence": "Daily use of cloud data warehouses for analytics pipelines"},
-      {"name": "dbt", "level": "Proficient", "evidence": "Data transformation layer for analytics warehouse"},
-      {"name": "Tableau", "level": "Proficient", "evidence": "Executive dashboards and self-serve analytics for stakeholders"}
+      {
+        "name": "ETL Processes",
+        "level": "Expert",
+        "evidence": "Built and maintained Airflow DAGs processing 10M+ rows daily"
+      },
+      {
+        "name": "AWS (S3, Redshift)",
+        "level": "Proficient",
+        "evidence": "Daily use of cloud data warehouses for analytics pipelines"
+      },
+      {
+        "name": "dbt",
+        "level": "Proficient",
+        "evidence": "Data transformation layer for analytics warehouse"
+      },
+      {
+        "name": "Tableau",
+        "level": "Proficient",
+        "evidence": "Executive dashboards and self-serve analytics for stakeholders"
+      }
     ],
     "domain": [
-      {"name": "Product Analytics", "level": "Expert", "evidence": "Defined and tracked KPIs for product team; built experimentation frameworks"},
-      {"name": "Financial Modeling", "level": "Proficient", "evidence": "Revenue forecasting and scenario analysis for strategic planning"}
+      {
+        "name": "Product Analytics",
+        "level": "Expert",
+        "evidence": "Defined and tracked KPIs for product team; built experimentation frameworks"
+      },
+      {
+        "name": "Financial Modeling",
+        "level": "Proficient",
+        "evidence": "Revenue forecasting and scenario analysis for strategic planning"
+      }
     ]
   },
-
   "experience": [
     {
       "company": "TechCorp Inc.",
@@ -75,11 +103,18 @@
         "Developed customer segmentation model using clustering techniques, enabling targeted marketing campaigns",
         "Created executive dashboard tracking 12 KPIs, becoming the primary decision-making tool for leadership"
       ],
-      "tools": ["Python", "SQL", "dbt", "Airflow", "Tableau", "AWS Redshift"]
+      "tools": [
+        "Python",
+        "SQL",
+        "dbt",
+        "Airflow",
+        "Tableau",
+        "AWS Redshift"
+      ]
     },
     {
       "company": "DataStart GmbH",
-      "location": "Munich, Germany",
+      "location": "Hamburg, Germany",
       "title": "Data Analyst",
       "start": "2020-06",
       "end": "2023-02",
@@ -92,10 +127,17 @@
         "Presented quarterly business reviews to C-suite, translating complex analyses into actionable insights",
         "Reduced data discrepancies by 90% through implementation of data quality checks across pipelines"
       ],
-      "tools": ["Python", "R", "SQL", "AWS S3", "Airflow", "Tableau", "Git"]
+      "tools": [
+        "Python",
+        "R",
+        "SQL",
+        "AWS S3",
+        "Airflow",
+        "Tableau",
+        "Git"
+      ]
     }
   ],
-
   "education": [
     {
       "institution": "University of Example",
@@ -111,7 +153,6 @@
       ]
     }
   ],
-
   "certifications": [
     {
       "name": "AWS Certified Data Analytics",
@@ -119,7 +160,6 @@
       "expected": "2025"
     }
   ],
-
   "positioning": {
     "strongest_narrative": "Full-stack data analyst who bridges technical implementation and business strategy — builds systems that drive measurable impact",
     "key_differentiators": [
@@ -135,25 +175,97 @@
       "Business Intelligence Engineer"
     ]
   },
-
   "job_search": {
+    "_help": "Drives filtering, ranking, salary estimates and job discovery. Everything here is about YOUR search; edit freely.",
+    "target_roles": [
+      "Data Analyst",
+      "Analytics Engineer",
+      "BI Analyst",
+      "Data Scientist"
+    ],
+    "search_terms": [
+      "data analyst",
+      "analytics engineer",
+      "business intelligence"
+    ],
+    "domain_words": [
+      "data",
+      "analytics",
+      "bi",
+      "insights",
+      "reporting",
+      "statistics",
+      "ml"
+    ],
+    "role_words": [
+      "analyst",
+      "engineer",
+      "scientist"
+    ],
+    "seniority": "mid",
+    "languages": [
+      "en",
+      "de"
+    ],
+    "location": {
+      "preferred": "Berlin",
+      "city_aliases": [
+        "Berlin"
+      ],
+      "country": "Germany",
+      "country_code": "DE",
+      "country_aliases": [
+        "Germany",
+        "Deutschland"
+      ],
+      "remote": "country"
+    },
     "salary": {
-      "minimum_eur": 55000,
+      "minimum": 55000,
+      "currency": "EUR",
       "note": "55k minimum; flexible for exceptional opportunities"
     },
-    "location": {
-      "preferred": "Berlin or Munich",
-      "remote_ok": true
+    "salary_reference_bands": {
+      "Data Analyst": {
+        "low": 52000,
+        "high": 70000
+      },
+      "Data Scientist": {
+        "low": 60000,
+        "high": 82000
+      }
+    },
+    "objective": {
+      "summary": "Mid-level analytics role with real ownership, starting within three months.",
+      "qualification_fit": "Prioritize mid-level analyst / analytics-engineer roles; avoid lead, principal, head-of or manager roles."
+    },
+    "work_authorization": {
+      "needs_sponsorship": false,
+      "note": "EU citizen"
     },
     "exclusions": {
-      "companies": ["CompanyX"],
-      "sectors": ["Gambling"]
+      "companies": [
+        "CompanyX"
+      ],
+      "sectors": [
+        "Gambling"
+      ]
     }
   },
-
   "meta": {
     "profile_version": "1.0",
     "last_updated": "2026-01",
     "notes": "Canonical source of truth for resume generation. Update this JSON with new achievements, skills, and preferences."
-  }
+  },
+  "projects": [
+    {
+      "name": "Open-source demand forecasting toolkit",
+      "url": "github.com/janedoe/forecast-kit",
+      "facts": [
+        "Python package for hierarchical time-series forecasting",
+        "Used in two university course projects"
+      ],
+      "framing": "Present as an end-to-end forecasting project; no invented user counts."
+    }
+  ]
 }

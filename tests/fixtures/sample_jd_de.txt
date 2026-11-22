@@ -1,0 +1,19 @@
+Datenanalyst (m/w/d) Controlling & Reporting — Lindenhof Versicherung AG, Hamburg
+
+Die Lindenhof Versicherung ist ein mittelständischer Sachversicherer mit Sitz in Hamburg.
+Zur Verstärkung unseres Teams Unternehmenssteuerung suchen wir eine*n Datenanalyst*in.
+
+Ihre Aufgaben
+- Aufbau und Weiterentwicklung des monatlichen Management-Reportings
+- Analyse von Schaden- und Vertragsdaten mit SQL und Python
+- Entwicklung von Dashboards in Power BI für Vorstand und Fachbereiche
+- Unterstützung bei Planungs- und Hochrechnungsprozessen
+
+Ihr Profil
+- Abgeschlossenes Studium der Wirtschaftswissenschaften, Statistik, Mathematik o. Ä.
+- Mindestens 2 Jahre Berufserfahrung in Analytics, Controlling oder BI
+- Sehr gute SQL-Kenntnisse, Erfahrung mit Python oder R
+- Verhandlungssichere Deutschkenntnisse, gute Englischkenntnisse
+
+Wir bieten
+- Mobiles Arbeiten bis zu 3 Tage pro Woche, 30 Urlaubstage, betriebliche Altersvorsorge

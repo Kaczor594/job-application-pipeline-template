@@ -1,0 +1,19 @@
+Data Analyst (m/f/d) — Northwind Mobility GmbH, Berlin (hybrid)
+
+Northwind Mobility builds route-planning software for regional bus operators across Europe.
+Our analytics team turns ticketing and GPS data into decisions about timetables and pricing.
+
+What you'll do
+- Own recurring KPI reporting for 30+ operator customers (ridership, punctuality, revenue)
+- Build and maintain dbt models on top of our BigQuery warehouse
+- Run ad-hoc analyses and A/B test evaluations for the product team
+- Build self-service dashboards in Looker and train stakeholders to use them
+
+What you bring
+- 2+ years in a data analyst or BI role
+- Strong SQL and Python (pandas); experience with dbt is a plus
+- Solid statistics: hypothesis testing, regression, experiment design
+- Clear communication in English; German is a plus
+
+What we offer
+- Hybrid work (2 office days in Berlin-Kreuzberg), 30 vacation days, learning budget

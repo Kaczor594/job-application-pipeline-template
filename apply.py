@@ -26,11 +26,45 @@ from pathlib import Path
 import pdfplumber
 
 # ── Config ────────────────────────────────────────────────────────────────────
+
+def _load_dotenv(path: Path) -> None:
+    """Minimal .env loader (KEY=VALUE lines). Real environment variables win."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key = key.strip().removeprefix("export ").strip()
+        os.environ.setdefault(key, val.strip().strip('"').strip("'"))
+
+
+_load_dotenv(Path(__file__).parent / ".env")
+
 PROFILE_PATH = Path(__file__).parent / "profile.json"
 PHOTO_PATH   = Path(__file__).parent / "photo_cv.jpg"      # cropped + white-bg version for LaTeX
 OUTPUT_DIR   = Path(__file__).parent / "applications"
-MODEL_STRONG = "claude-opus-4-6"
-MODEL_FAST   = "claude-sonnet-4-20250514"
+USAGE_LOG    = Path(__file__).parent / "data" / "usage.jsonl"  # one line per API call (for cost tracking)
+
+# Models are env-overridable so cost/quality can be tuned without a code edit.
+MODEL_STRONG = os.environ.get("JOBAPP_MODEL_STRONG", "claude-opus-5-5")    # matching + cover letter
+MODEL_FAST   = os.environ.get("JOBAPP_MODEL_FAST",   "claude-sonnet-5-5")  # JD analysis, fit-to-page edits, fit summary
+
+# Thinking is always on for these models; effort is the depth/cost lever.
+# Structured JSON extraction needs little deliberation, writing benefits from more.
+EFFORT = {MODEL_STRONG: "medium", MODEL_FAST: "low"}
+
+# USD per million tokens (input, output). Used only for the per-application cost
+# estimate written to usage.json — update if prices change.
+PRICES_USD_PER_MTOK = {
+    "claude-opus-5-5":   (4.00, 20.00),
+    "claude-sonnet-5-5": (2.00, 10.00),
+    "claude-haiku-5-5":  (0.10, 0.50),
+}
+
+# Running token tally for this process (written to <application>/usage.json).
+_USAGE = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
 
 # ── LaTeX escaping ────────────────────────────────────────────────────────────
 def latex_escape(text: str) -> str:
@@ -66,16 +100,56 @@ def read_jd(args) -> str:
     print("\n── Paste the job description. Ctrl+D (Mac/Linux) or Ctrl+Z+Enter (Windows) when done ──\n")
     return "".join(sys.stdin.readlines())
 
+def _record_usage(model: str, usage) -> None:
+    inp = getattr(usage, "input_tokens", 0) or 0
+    out = getattr(usage, "output_tokens", 0) or 0
+    p_in, p_out = PRICES_USD_PER_MTOK.get(model, (0.0, 0.0))
+    cost = inp / 1e6 * p_in + out / 1e6 * p_out
+    _USAGE["calls"] += 1
+    _USAGE["input_tokens"] += inp
+    _USAGE["output_tokens"] += out
+    _USAGE["cost_usd"] += cost
+    try:
+        USAGE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with USAGE_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"ts": datetime.now().isoformat(timespec="seconds"),
+                                "source": os.environ.get("JOBAPP_USAGE_SOURCE", "apply"),
+                                "model": model, "input_tokens": inp,
+                                "output_tokens": out, "cost_usd": round(cost, 5)}) + "\n")
+    except OSError:
+        pass  # cost logging must never break the pipeline
+
+
 def call_claude(system: str, user: str, max_tokens: int = 4000, model: str = MODEL_FAST) -> str:
+    """One Claude call returning the text answer.
+
+    `max_tokens` is the expected size of the visible answer. Thinking tokens count
+    against the API cap too, so the real cap is set generously above it.
+    """
     client = anthropic.Anthropic()
+    extra_body = {"output_config": {"effort": EFFORT.get(model, "medium")}}
+    extra_headers = {}
+    if model in ("claude-opus-5-5", "claude-sonnet-5-5"):
+        # If a safety classifier declines (rare false positive), let the API
+        # retry the same request on a fallback model instead of failing.
+        extra_body["fallbacks"] = "default"
+        extra_headers["anthropic-beta"] = "server-side-fallback-2026-07-01"
     retries = 3
     for attempt in range(1, retries + 1):
         try:
             msg = client.messages.create(
-                model=model, max_tokens=max_tokens, system=system,
-                messages=[{"role": "user", "content": user}]
+                model=model, max_tokens=max(16000, max_tokens * 4), system=system,
+                messages=[{"role": "user", "content": user}],
+                extra_body=extra_body, extra_headers=extra_headers or None,
             )
-            return msg.content[0].text
+            _record_usage(model, msg.usage)
+            if msg.stop_reason == "refusal":
+                raise RuntimeError(f"Model declined the request ({model}). "
+                                   "Try again, or rephrase the job description input.")
+            text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+            if msg.stop_reason == "max_tokens" and not text.strip():
+                raise RuntimeError("Model hit the token limit before answering.")
+            return text
         except (anthropic.RateLimitError, anthropic.InternalServerError,
                 anthropic.APIConnectionError) as e:
             if attempt == retries:
@@ -175,6 +249,60 @@ def translate_degree(degree: str, lang: str) -> str:
     return translations.get(degree, degree)
 
 
+# ── job_search preferences (profile.json → job_search) ────────────────────────
+
+def job_search(profile: dict) -> dict:
+    return profile.get('job_search', {}) or {}
+
+
+def salary_pref(profile: dict) -> tuple:
+    """(minimum, currency) from job_search.salary. Accepts the older
+    `minimum_eur` key so profiles from earlier versions keep working."""
+    s = job_search(profile).get('salary', {}) or {}
+    minimum = s.get('minimum', s.get('minimum_eur'))
+    currency = s.get('currency') or 'EUR'
+    return (minimum if isinstance(minimum, (int, float)) else None), currency
+
+
+def market_description(profile: dict) -> str:
+    """Human-readable market for prompts, e.g. 'Berlin, Germany (remote within the country OK)'."""
+    loc = job_search(profile).get('location', {}) or {}
+    city = loc.get('preferred') or ''
+    country = loc.get('country') or ''
+    where = ", ".join(x for x in (city, country) if x) or "the candidate's home market"
+    remote = loc.get('remote')
+    if remote is None:  # older profiles: remote_ok bool
+        remote = 'country' if loc.get('remote_ok') else 'none'
+    remote_note = {"country": " (remote within the country OK)",
+                   "any": " (fully remote anywhere OK)"}.get(remote, "")
+    return where + remote_note
+
+
+def money(v, currency: str = 'EUR') -> str:
+    """Format a salary figure; 'n/a' when the model could not estimate."""
+    sym = {"EUR": "€", "USD": "$", "GBP": "£", "CHF": "CHF "}.get(currency, f"{currency} ")
+    return f"{sym}{v:,.0f}" if isinstance(v, (int, float)) else "n/a"
+
+
+def experience_bullets_for(matched: dict, company: str) -> list:
+    """Bullets for one experience entry, tolerant of model key drift.
+
+    The model occasionally returns a slightly different key than requested
+    (e.g. "Acme GmbH" for "Acme"); fall back to a case-insensitive match on the
+    first word so a small drift never silently drops a whole section.
+    """
+    eb = matched.get('experience_bullets', {})
+    if not isinstance(eb, dict) or not company:
+        return []
+    if eb.get(company):
+        return eb[company]
+    needle = company.split()[0].lower()
+    for k, v in eb.items():
+        if needle in k.lower() and v:
+            return v
+    return []
+
+
 # ── Pipeline steps ────────────────────────────────────────────────────────────
 
 def analyze_jd(jd_text: str, forced_lang: str = None) -> dict:
@@ -203,7 +331,7 @@ Job Description:
     if forced_lang:
         result['language'] = forced_lang
     lang = result.get('language', 'en')
-    print(f"   Language: {'German 🇩🇪' if lang == 'de' else 'English 🇬🇧'} | "
+    print(f"   Language: {'German' if lang == 'de' else 'English'} | "
           f"{result.get('role_title')} at {result.get('company')}")
     return result
 
@@ -284,8 +412,16 @@ Return this JSON (all string values in the output language):
   "experience_bullets": {exp_keys},
   "education_bullets": ["1-2 short bullets: thesis topic (if relevant to role), focus/specialization, study abroad"],
   "certifications_line": "certification/training line — include if relevant to role, omit if not",
+  "projects_to_feature": [
+    {{"name": "exact project name from PROFILE.projects (use name_de if writing in German and it exists)", "url": "exact url from the project, verbatim, no scheme", "bullet": "ONE concise line, ~20 words max, framing the project for THIS role"}}
+  ],
   "framing_notes": "brief internal note on the angle taken for this application"
-}}""", 2000, model=MODEL_STRONG))
+}}
+
+PROJECTS — IMPORTANT:
+- Select projects ONLY from PROFILE.projects (if that list is missing or empty, return []). Include 0 or 1 — the single most relevant — or [] if none adds anything for this role.
+- Respect each project's "framing" instruction if it has one.
+- Copy the "url" verbatim (no http/https prefix). Draw the bullet only from the project's facts; invent nothing.""", 2000, model=MODEL_STRONG))
 
 
 def generate_cl_content(profile: dict, jd: dict, matched: dict) -> dict:
@@ -298,7 +434,7 @@ def generate_cl_content(profile: dict, jd: dict, matched: dict) -> dict:
     key_achievements = []
     for entry in experience_entries:
         company = entry.get('company', '')
-        bullets = matched.get('experience_bullets', {}).get(company, [])
+        bullets = experience_bullets_for(matched, company)
         if bullets:
             key_achievements.extend(bullets[:3])
 
@@ -329,8 +465,49 @@ Return JSON:
 
 
 def generate_fit_summary(profile: dict, jd: dict, matched: dict) -> dict:
+    js = job_search(profile)
+    minimum, currency = salary_pref(profile)
+    market = market_description(profile)
+
+    bands = js.get('salary_reference_bands') or {}
+    if bands:
+        band_lines = ", ".join(
+            f"{role} {money(b.get('low'), currency)}–{money(b.get('high'), currency)}"
+            for role, b in bands.items() if isinstance(b, dict))
+        bands_block = (f"Reference bands the candidate supplied for their market (gross annual base): "
+                       f"{band_lines}. These are reference points, not targets — reason from the specific role.")
+    else:
+        bands_block = ("No reference bands supplied — use your own knowledge of current pay in this "
+                       "market and say so in salary_notes.")
+
+    floor_step = (f"4. FLOOR CHECK. The candidate's stated minimum is {money(minimum, currency)}. If your "
+                  f"\"mid\" lands below it, re-check the role band for lowballing; if the role truly pays "
+                  f"under the minimum, say so explicitly in salary_notes."
+                  if minimum is not None else "4. (No salary minimum stated — skip the floor check.)")
+
+    objective = js.get('objective', {}) or {}
+    qual_fit = objective.get('qualification_fit') or ""
+    qual_block = (f"\nQUALIFICATION FOCUS (from the candidate): {qual_fit}\n"
+                  "Judge \"fit_percentage\" and \"gaps\" by whether they can realistically START in this "
+                  "role now: a role far above their seniority is a LOW fit even if the domain matches.\n"
+                  if qual_fit else "")
+
+    wa = js.get('work_authorization', {}) or {}
+    needs_sponsorship = bool(wa.get('needs_sponsorship'))
+    if needs_sponsorship:
+        wa_block = (f"\nWORK AUTHORIZATION: the candidate needs employer visa/work-permit sponsorship "
+                    f"({wa.get('note', 'no further detail')}). Assess sponsorship likelihood from the role "
+                    "and company (large/international employers usually can; very small firms, agency "
+                    "listings, or roles saying 'no sponsorship' / requiring existing work authorization "
+                    "usually cannot).\n")
+        wa_json = (',\n  "work_authorization": {"sponsorship_signal": "likely | unknown | unlikely", '
+                   '"note": "1 sentence on sponsorship likelihood at this employer"}')
+    else:
+        wa_block, wa_json = "", ""
+
     return parse_json(call_claude(
-        "Expert recruiter and compensation analyst. Be honest and analytical. Output ONLY valid JSON, no markdown.",
+        "Expert recruiter and compensation analyst. Be realistic and market-accurate — neither "
+        "inflate nor lowball. Output ONLY valid JSON, no markdown.",
         f"""Evaluate how well this candidate fits the role, and estimate the salary.
 
 JD ANALYSIS:
@@ -341,6 +518,23 @@ CANDIDATE PROFILE:
 
 MATCHED CONTENT (what was selected for the resume):
 {json.dumps(matched, indent=2)}
+{qual_block}{wa_block}
+SALARY METHOD — currency {currency}, candidate's market: {market}. Follow this order, do NOT skip step 1:
+1. ROLE FIRST. Estimate the role's own market band (gross annual base, current year) from its
+   title, seniority, industry and company type — INDEPENDENTLY of this candidate. Weight the
+   title: Junior < Mid < Senior/Lead/Manager/Principal.
+2. LOCATION. Adjust for the job's location (from the JD) versus national pay levels; large
+   corporates, banks and insurers tend to pay at or above market, early-stage startups slightly
+   below on base. Fully-remote roles track the national band of the employing country.
+3. CANDIDATE. Then set "salary_estimate" to the candidate's REALISTIC offer within (or, where fit
+   is weak, toward the lower part of) that role band. Do not collapse every role to the
+   candidate's current pay — a strong role band lifts the offer even if domain fit is partial.
+{floor_step}
+
+{bands_block}
+
+low/high = the 25th–75th percentile of the realistic offer (a sane spread), NOT an extreme min/max.
+If the role cannot be sensibly priced, use null for the numbers and explain in salary_notes.
 
 Return this JSON:
 {{
@@ -348,13 +542,11 @@ Return this JSON:
   "fit_summary": "2-3 sentence overall assessment of candidate-role fit",
   "strengths": ["3-5 strengths relative to this specific role"],
   "gaps": ["1-3 gaps or weaknesses relative to this specific role, be honest"],
-  "salary_estimate_eur": {{
-    "low": 50000,
-    "mid": 58000,
-    "high": 65000
-  }},
-  "salary_notes": "1-2 sentences explaining the estimate: market, location, seniority, industry factors"
-}}""", 1500))
+  "salary_currency": "{currency}",
+  "role_market_band": {{"low": 65000, "mid": 75000, "high": 85000}},
+  "salary_estimate": {{"low": 62000, "mid": 70000, "high": 80000}},
+  "salary_notes": "1-2 sentences: the role's market band, then the candidate's realistic offer and why"{wa_json}
+}}""", 1800))
 
 # ── LaTeX builders ────────────────────────────────────────────────────────────
 
@@ -371,8 +563,10 @@ def build_resume_tex(profile: dict, jd: dict, matched: dict,
     # Section headers
     if lang == 'de':
         sec_profile, sec_skills, sec_exp, sec_edu = "Profil", "Kenntnisse", "Berufserfahrung", "Ausbildung"
+        sec_proj = "Projekte"
     else:
         sec_profile, sec_skills, sec_exp, sec_edu = "Profile", "Skills", "Experience", "Education"
+        sec_proj = "Projects"
 
     # Language line — built dynamically from profile
     languages = profile['personal'].get('languages', [])
@@ -399,6 +593,14 @@ def build_resume_tex(profile: dict, jd: dict, matched: dict,
     def items(bs):
         return "\n    ".join(f"\\item {b}" for b in bs)
 
+    def itemize_block(bs):
+        # Never emit an empty itemize — XeLaTeX fails on it.
+        if not bs:
+            return ""
+        return f"""\\begin{{itemize}}
+    {items(bs)}
+\\end{{itemize}}"""
+
     # ── Experience section — dynamic from profile ──
     experience_entries = profile.get('experience', [])
     exp_blocks = []
@@ -410,15 +612,14 @@ def build_resume_tex(profile: dict, jd: dict, matched: dict,
         end = entry.get('end', 'present')
 
         date_range = format_date_range(start, end, lang)
-        bullets = esc(matched.get('experience_bullets', {}).get(company_name, []))
+        bullets = esc(experience_bullets_for(matched, company_name))
 
         if not bullets:
             continue
 
-        block = rf"""\noindent\textbf{{{esc(title)}}} \hfill \textcolor{{subtle}}{{\textit{{{esc(company_name)}, {esc(location)} \textbar{{}} {date_range}}}}}
-\begin{{itemize}}
-    {items(bullets)}
-\end{{itemize}}"""
+        where = ", ".join(x for x in (esc(company_name), esc(location)) if x)
+        block = (rf"\noindent\textbf{{{esc(title)}}} \hfill \textcolor{{subtle}}{{\textit{{{where} \textbar{{}} {date_range}}}}}"
+                 + "\n" + itemize_block(bullets))
 
         if i > 0:
             block = f"\\vspace{{6pt}}\n\n{block}"
@@ -463,13 +664,29 @@ def build_resume_tex(profile: dict, jd: dict, matched: dict,
 
     edu_section_tex = "\n\n".join(edu_blocks)
 
-    # Education bullet list
-    if edu_bullets:
-        edu_itemize = f"""\\begin{{itemize}}
-    {items(edu_bullets)}
-\\end{{itemize}}"""
-    else:
-        edu_itemize = ""
+    edu_itemize = itemize_block(edu_bullets)
+
+    # ── Projects section (between Experience and Education) ──
+    # Empty / missing list emits no section, keeping the page budget free.
+    projects = matched.get('projects_to_feature', [])
+    if not isinstance(projects, list):
+        projects = []
+    proj_entries = []
+    for p in projects:
+        if not isinstance(p, dict) or not p.get('name'):
+            continue
+        pname   = esc(p['name'])
+        purl    = (p.get('url') or '').strip()
+        pbullet = esc(p.get('bullet', ''))
+        link = ""
+        if purl:
+            href = purl if purl.startswith('http') else f"https://{purl}"
+            shown = esc(purl.replace('https://', '').replace('http://', ''))
+            link = rf"\href{{{href}}}{{\textcolor{{accent}}{{{shown}}}}}"
+        proj_entries.append(rf"\noindent\textbf{{{pname}}} \hfill \textcolor{{subtle}}{{{link}}}"
+                            + "\n" + (itemize_block([pbullet]) if pbullet else ""))
+    projects_section = (f"\n\\section{{{sec_proj}}}\n" + "\n\\vspace{6pt}\n".join(proj_entries) + "\n"
+                        if proj_entries else "")
 
     # ── Certifications — dynamic from profile ──
     cert_block = ""
@@ -561,7 +778,7 @@ def build_resume_tex(profile: dict, jd: dict, matched: dict,
 \section{{{sec_exp}}}
 
 {experience_tex}
-
+{projects_section}
 \section{{{sec_edu}}}
 {edu_section_tex}
 {edu_itemize}{cert_block}
@@ -766,10 +983,18 @@ Return the COMPLETE updated JSON with the same structure — all fields, adjuste
   "experience_bullets": {exp_keys_str},
   "education_bullets": ["..."],
   "certifications_line": "...",
+  "projects_to_feature": [...],
   "framing_notes": "..."
-}}"""
+}}
 
-    return parse_json(call_claude(system, user, 2500))
+Keep "projects_to_feature" exactly as given — do not add, remove, reword, or expand it; it is a fixed entry, not a length-adjustment lever."""
+
+    adjusted = parse_json(call_claude(system, user, 2500))
+    # The fit-to-page loop must never drop the featured project, even if the
+    # editor model omits the key.
+    if matched.get('projects_to_feature') and not adjusted.get('projects_to_feature'):
+        adjusted['projects_to_feature'] = matched['projects_to_feature']
+    return adjusted
 
 # ── LaTeX compiler ────────────────────────────────────────────────────────────
 
@@ -814,6 +1039,8 @@ def fit_to_page(profile: dict, jd: dict, matched: dict,
 
     for iteration in range(1, MAX_ADJUST_ITER + 2):
         tex = build_resume_tex(profile, jd, current, photo_path=photo_path)
+        # Written before compiling so a failed compile leaves the .tex for inspection.
+        (out_dir / "resume.tex").write_text(tex, encoding='utf-8')
         ok  = compile_tex(tex, pdf_path, extra_files=extra, label=f"resume iter {iteration}")
         if not ok:
             return False, current
@@ -824,7 +1051,6 @@ def fit_to_page(profile: dict, jd: dict, matched: dict,
 
         if status == 'perfect':
             print(f"   Iteration {iteration}: {pct:.1f}% full  ✓ perfect — done")
-            (out_dir / "resume.tex").write_text(tex, encoding='utf-8')
             return True, current
 
         rem  = m['remaining_cm']
@@ -838,7 +1064,6 @@ def fit_to_page(profile: dict, jd: dict, matched: dict,
 
         if iteration > MAX_ADJUST_ITER:
             print(f"   Max iterations reached — keeping {pct:.1f}%")
-            (out_dir / "resume.tex").write_text(tex, encoding='utf-8')
             return True, current
 
         current = adjust_matched(current, jd, m, iteration, profile=profile)
@@ -871,7 +1096,7 @@ def main():
         return
 
     if not os.environ.get('ANTHROPIC_API_KEY'):
-        print("Error: ANTHROPIC_API_KEY not set.\nRun: export ANTHROPIC_API_KEY='sk-ant-...'")
+        print("Error: ANTHROPIC_API_KEY not set.\nPut it in .env (ANTHROPIC_API_KEY=sk-ant-...) or export it.")
         sys.exit(1)
     if not PROFILE_PATH.exists():
         print(f"Error: profile.json not found at {PROFILE_PATH}")
@@ -923,28 +1148,31 @@ def main():
     fit = generate_fit_summary(profile, jd, final_matched)
     (out_dir / "fit_summary.json").write_text(json.dumps(fit, indent=2), encoding='utf-8')
 
-    salary = fit.get('salary_estimate_eur', {})
-
-    # Salary preference comparison
-    salary_pref = profile.get('job_search', {}).get('salary', {})
-    salary_min = salary_pref.get('minimum_eur')
+    salary   = fit.get('salary_estimate') or fit.get('salary_estimate_eur') or {}
+    band     = fit.get('role_market_band') or fit.get('role_market_band_eur') or {}
+    salary_min, currency = salary_pref(profile)
+    currency = fit.get('salary_currency') or currency
     salary_mid = salary.get('mid')
-    salary_line = ""
-    if salary_min is not None and salary_mid is not None:
-        if salary_mid < salary_min:
-            salary_line = f"\n⚠ **Below minimum**: estimated mid (€{salary_mid:,}) is below your minimum (€{salary_min:,})"
-        else:
-            salary_line = f"\n✓ **Meets salary minimum**: estimated mid (€{salary_mid:,}) ≥ your minimum (€{salary_min:,})"
 
-    # Location preference comparison
-    loc_pref = profile.get('job_search', {}).get('location', {})
+    salary_line = ""
+    if salary_min is not None and isinstance(salary_mid, (int, float)):
+        if salary_mid < salary_min:
+            salary_line = (f"\n⚠ **Below minimum**: estimated mid ({money(salary_mid, currency)}) "
+                           f"is below your minimum ({money(salary_min, currency)})")
+        else:
+            salary_line = (f"\n✓ **Meets salary minimum**: estimated mid ({money(salary_mid, currency)}) "
+                           f"≥ your minimum ({money(salary_min, currency)})")
+
     jd_location = jd.get('location', '')
-    location_line = ""
-    if loc_pref and jd_location:
-        pref_location = loc_pref.get('preferred', '?')
-        remote_ok = loc_pref.get('remote_ok', False)
-        location_line = (f"\n**Location**: {jd_location} "
-                         f"(Preference: {pref_location}, Remote OK: {'yes' if remote_ok else 'no'})")
+    location_line = (f"\n**Location**: {jd_location} (your preference: {market_description(profile)})"
+                     if jd_location and job_search(profile).get('location') else "")
+
+    wa = fit.get('work_authorization') or {}
+    wa_line = ""
+    if wa:
+        sig = (wa.get('sponsorship_signal') or 'unknown').lower()
+        icon = {"likely": "✓", "unknown": "•", "unlikely": "⚠"}.get(sig, "•")
+        wa_line = f"\n{icon} **Visa sponsorship**: {sig} — {wa.get('note', '')}"
 
     fit_md = f"""# Fit Summary — {role} @ {company}
 
@@ -958,22 +1186,26 @@ def main():
 ### Gaps
 {chr(10).join(f'- {g}' for g in fit.get('gaps', []))}
 
-## Salary Estimate (EUR)
+## Salary Estimate ({currency})
 
-| Low | Mid | High |
-|-----|-----|------|
-| {salary.get('low', '?'):,} | {salary.get('mid', '?'):,} | {salary.get('high', '?'):,} |
+| Estimate | Low | Mid | High |
+|----------|-----|-----|------|
+| Role market band | {money(band.get('low'), currency)} | {money(band.get('mid'), currency)} | {money(band.get('high'), currency)} |
+| Your realistic offer | {money(salary.get('low'), currency)} | {money(salary.get('mid'), currency)} | {money(salary.get('high'), currency)} |
 
-{fit.get('salary_notes', '')}{salary_line}{location_line}
+{fit.get('salary_notes', '')}{salary_line}{location_line}{wa_line}
 """
     (out_dir / "fit_summary.md").write_text(fit_md, encoding='utf-8')
 
-    flag       = "🇩🇪 DE" if lang == 'de' else "🇬🇧 EN"
+    usage = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in _USAGE.items()}
+    usage["models"] = {"strong": MODEL_STRONG, "fast": MODEL_FAST}
+    (out_dir / "usage.json").write_text(json.dumps(usage, indent=2), encoding='utf-8')
+
+    flag       = "DE" if lang == 'de' else "EN"
     photo_note = " + photo" if photo_path else " (no photo)"
     final_m    = measure_pdf(out_dir / "resume.pdf") if resume_ok else {}
     fill_note  = f" ({final_m.get('fill_pct', '?')}% full)" if final_m else ""
     fit_pct    = fit.get('fit_percentage', '?')
-    salary_mid = salary.get('mid', '?')
 
     print(f"\n{'='*62}")
     print(f"Done!  [{flag}]  {role} @ {company}")
@@ -983,18 +1215,14 @@ def main():
     print(f"       └─ resume.tex for manual tweaks")
     print(f"  {'✓' if cl_ok    else '✗'}  cover_letter.pdf")
     print(f"       └─ cover_letter.tex")
-    print(f"  ✓  fit_summary.md              ← {fit_pct}% fit | ~€{salary_mid:,} est.")
-    if salary_min is not None and salary_mid is not None and isinstance(salary_mid, (int, float)):
-        if salary_mid < salary_min:
-            print(f"     ⚠  Below minimum: mid €{salary_mid:,} < your €{salary_min:,}")
-        else:
-            print(f"     ✓  Meets salary minimum (€{salary_min:,})")
-    if jd_location and loc_pref:
-        pref_loc_display = loc_pref.get('preferred', '?')
-        remote_display = 'yes' if loc_pref.get('remote_ok', False) else 'no'
-        print(f"     📍 {jd_location} (pref: {pref_loc_display}, remote OK: {remote_display})")
+    print(f"  ✓  fit_summary.md              ← {fit_pct}% fit | ~{money(salary_mid, currency)} est.")
+    if salary_line:
+        print("     " + salary_line.strip().replace("**", ""))
+    if location_line:
+        print("     " + location_line.strip().replace("**", ""))
     print(f"     jd_analysis.json           ← verify JD extraction")
-    print(f"     matched_profile_final.json ← final content used\n")
+    print(f"     matched_profile_final.json ← final content used")
+    print(f"     usage.json                 ← {usage['calls']} API calls, ≈ ${usage['cost_usd']:.2f}\n")
     framing = final_matched.get('framing_notes', 'N/A')
     if framing.lower().startswith('angle:'):
         framing = framing[len('angle:'):].strip()
